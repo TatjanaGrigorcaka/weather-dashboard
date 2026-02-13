@@ -22,7 +22,7 @@ async function fetchWeather(latitude, longitude) {
     }
 
     const data = await response.json();
-    console.log("data", data);
+    // console.log("data", data);
     return data;
   } catch (error) {
     if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT") {
