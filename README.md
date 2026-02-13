@@ -32,7 +32,7 @@ npm install
 
 ## Start project
 
-To run the script:
+Run the application using Node.js:
 
 ```bash
 node index.js
