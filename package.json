@@ -1,0 +1,15 @@
+{
+  "name": "weather-dashboard",
+  "version": "1.0.0",
+  "description": "The Weather Dashboard is a CLI application that fetches real-time weather data from the Open-Meteo API to display formatted forecasts and maintain a local weather history. It demonstrates essential programming skills such as asynchronous API integration, HTTP request handling, and formatted console output.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
