@@ -1,64 +1,119 @@
+const readline = require("readline");
 const { searchCity } = require("./geocoding");
 const { fetchWeather } = require("./api");
 const { getWeatherDescription } = require("./utils");
 const { displayWeather } = require("./display");
 const { loadData, saveData } = require("./storage");
 
-async function testFullIntegration() {
-  console.log("--- Pilna cikla testēšana ---");
-  const cityInput = "Riga";
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+/**
+ * Palīgfunkcija jautājumu uzdošanai
+ */
+function ask(question) {
+  return new Promise((resolve) =>
+    rl.question(question, (ans) => resolve(ans.trim())),
+  );
+}
+
+/**
+ * Galvenā laikapstākļu iegūšanas loģika
+ */
+async function handleWeatherSearch(appData) {
+  const cityName = await ask("\nIevadi pilsētas nosaukumu: ");
+  if (!cityName) return;
 
   try {
-    // 1. Ielādējam esošos datus (lai nepazaudētu vēsturi)
-    const appData = loadData();
-
-    // 2. Meklējam pilsētu
-    console.log(`1. Meklējam pilsētu: ${cityInput}...`);
-    const locations = await searchCity(cityInput);
-
+    //  Meklējam pilsētu (geocoding)
+    const locations = await searchCity(cityName);
     if (locations.length === 0) {
-      console.log("Pilsēta netika atrasta.");
+      console.log("⚠ Pilsēta netika atrasta.");
       return;
     }
 
-    // Izvēlamies pirmo rezultātu (MVP tests)
-    const city = locations[0];
-    // console.log("city", city);
-    console.log(
-      `✅ Atrasts: ${city.name}, ${city.country} (${city.latitude}, ${city.longitude})`,
+    console.log("\nAtrastie rezultāti:");
+    locations.forEach((loc, index) => {
+      console.log(
+        `${index + 1}. ${loc.name}, ${loc.country} (${loc.latitude}, ${loc.longitude})`,
+      );
+    });
+    // Izvēlamies pilsétu
+    const choice = await ask(
+      `Izvēlies (1-${locations.length}) vai 'q' lai atceltu: `,
     );
-    // 3. Iegūstam laikapstākļu datus
-    console.log("2. Iegūstam laikapstākļu datus...");
-    const weatherData = await fetchWeather(city.latitude, city.longitude);
-    const current = weatherData.current;
-    // console.log("current", current);
+    if (choice.toLowerCase() === "q") return;
 
-    // 4. Apstrādājam weather_code (utils)
-    const description = getWeatherDescription(current.weather_code);
+    const selectedLoc = locations[parseInt(choice) - 1];
+    if (!selectedLoc) {
+      console.log("⚠ Nepareiza izvēle.");
+      return;
+    }
+    // Iegūstam laikapstākļu datus (api)
+    console.log("Iegūstam datus...");
+    const weatherData = await fetchWeather(
+      selectedLoc.latitude,
+      selectedLoc.longitude,
+    );
+    // Apstrādājam weather_code (utils)
+    const description = getWeatherDescription(weatherData.current.weather_code);
 
-    // 5. Attēlojam rezultātu (display)
-    console.log("✅ Dati saņemti!");
-    displayWeather(city.name, city.country, current, description);
+    // Attēlojam rezultātu (display)
+    displayWeather(
+      selectedLoc.name,
+      selectedLoc.country,
+      weatherData.current,
+      description,
+    );
 
-    // 6. Sagatavojam ierakstu vēsturei (storage)
-    const newHistoryEntry = {
-      locationId: city.name, // Pagaidām izmantojam vārdu kā ID
+    // Sagatavojam ierakstu vēsturei (storage)
+    appData.weatherHistory.push({
+      locationId: selectedLoc.name, // Pagaidām izmantojam vārdu kā ID
       fetchedAt: new Date().toISOString(),
-      temperature: current.temperature_2m,
-      humidity: current.relative_humidity_2m,
-      windSpeed: current.wind_speed_10m,
-      weatherCode: current.weather_code,
+      temperature: weatherData.current.temperature_2m,
+      humidity: weatherData.current.relative_humidity_2m,
+      windSpeed: weatherData.current.wind_speed_10m,
+      weatherCode: weatherData.current.weather_code,
       description: description.description,
-    };
-
-    appData.weatherHistory.push(newHistoryEntry);
-
+    });
     // Saglabājam atjaunoto objektu
     saveData(appData);
-    console.log("✓ Dati veiksmīgi saglabāti JSON failā.");
+    console.log("✓ Dati saglabāti vēsturē.");
   } catch (error) {
-    console.error("❌ Kļūda testēšanas laikā:", error.message);
+    console.error("❌ Kļūda:", error.message);
   }
 }
 
-testFullIntegration();
+/**
+ * Programmas galvenā cilpa
+ */
+async function mainMenu() {
+  let running = true;
+  // Ielādējam esošos datus (lai nepazaudētu vēsturi)
+  const appData = loadData();
+
+  while (running) {
+    console.log("\n=== Laikapstākļu informācijas panelis ===");
+    console.log("1. Apskatīt pašreizējos laikapstākļus");
+    console.log("2. Iziet");
+
+    const choice = await ask("Izvēlies opciju (1-2): ");
+
+    switch (choice) {
+      case "1":
+        await handleWeatherSearch(appData);
+        break;
+      case "2":
+        console.log("Uz redzēšanos!");
+        running = false;
+        rl.close();
+        break;
+      default:
+        console.log("Nepareiza izvēle, mēģini vēlreiz.");
+    }
+  }
+}
+
+mainMenu();
