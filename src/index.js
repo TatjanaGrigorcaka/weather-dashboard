@@ -4,7 +4,9 @@ const { fetchWeather } = require("./api");
 const { getWeatherDescription } = require("./utils");
 const { displayWeather } = require("./display");
 const { loadData, saveData } = require("./storage");
+const { displayHistory } = require("./history");
 
+// Izveidojam interfeisu saziņai ar lietotāju
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -71,7 +73,7 @@ async function handleWeatherSearch(appData) {
     // Sagatavojam ierakstu vēsturei (storage)
     appData.weatherHistory.push({
       locationId: selectedLoc.name, // Pagaidām izmantojam vārdu kā ID
-      fetchedAt: new Date().toISOString(),
+      fetchedAt: weatherData.current.time,
       temperature: weatherData.current.temperature_2m,
       humidity: weatherData.current.relative_humidity_2m,
       windSpeed: weatherData.current.wind_speed_10m,
@@ -97,15 +99,22 @@ async function mainMenu() {
   while (running) {
     console.log("\n=== Laikapstākļu informācijas panelis ===");
     console.log("1. Apskatīt pašreizējos laikapstākļus");
-    console.log("2. Iziet");
+    console.log("2. Apskatīt laikapstākļu vēsturi");
+    console.log("3. Iziet");
 
-    const choice = await ask("Izvēlies opciju (1-2): ");
+    const choice = await ask("Izvēlies opciju (1-3): ");
 
     switch (choice) {
       case "1":
         await handleWeatherSearch(appData);
         break;
       case "2":
+        const histCity = await ask(
+          "Ievadi pilsētu (vai Enter, lai rādītu visu): ",
+        );
+        displayHistory(appData.weatherHistory, histCity || null);
+        break;
+      case "3":
         console.log("Uz redzēšanos!");
         running = false;
         rl.close();
