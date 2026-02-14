@@ -23,7 +23,7 @@ function loadData() {
 /**
  * Saglabā lietojumprogrammas datus JSON failā.
  * Automātiski izveido datu mapi, ja tāda neeksistē.
- * @param {Object} data - Saglabājamais datu objekts.
+ * @param {Object} data - Saglabājamais datu objekts .
  */
 function saveData(data) {
   const dir = path.dirname(DATA_FILE);
