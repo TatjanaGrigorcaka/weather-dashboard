@@ -1,27 +1,47 @@
 /**
  * Aprēķina un attēlo laikapstākļu vēsturi un statistiku
  * @param {Array} history - Vēstures ierakstu masīvs no JSON faila
- * @param {string|null} cityName - Pilsētas nosaukums filtrēšanai
+ * @param {string|null} cityName - Pilsētas nosaukums vai ID filtrēšanai
+ * @param {number|null} days - Dienu skaits, par kurām rādīt vēsturi
  */
-function displayHistory(history, cityName = null) {
-  // 1. Filtrējam datus
-  const filtered = cityName
-    ? history.filter(
-        (h) => h.locationId.toLowerCase() === cityName.toLowerCase(),
-      )
-    : history;
+function displayHistory(history, cityName = null, days = null) {
+  // Nodrošinām, ka pat ja parametrs pazūd, programma neizmet ReferenceError
+  const filterDays = days ? parseInt(days) : null;
 
-  if (filtered.length === 0) {
-    console.log(
-      `\n⚠ Vēstures dati pilsētai "${cityName || "Visas pilsētas"}" nav atrasti.`,
-    );
+  if (!history || history.length === 0) {
+    console.log("\n⚠ Vēsture ir tukša.");
     return;
   }
 
-  // 2. Tabulas galvene un formatēšana
+  // 1. Filtrējam pēc pilsētas (locationId)
+  let filtered = cityName
+    ? history.filter(
+        (h) =>
+          h.locationId && h.locationId.toLowerCase() === cityName.toLowerCase(),
+      )
+    : [...history];
+
+  // 2. Filtrējam pēc datuma diapazona
+  if (filterDays) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - filterDays);
+
+    filtered = filtered.filter((h) => new Date(h.fetchedAt) >= cutoffDate);
+  }
+
+  // 3. Kārtojam: No jaunākā uz vecāko
+  filtered.sort((a, b) => new Date(b.fetchedAt) - new Date(a.fetchedAt));
+
+  if (filtered.length === 0) {
+    console.log(`\n⚠ Dati netika atrasti ar norādītajiem filtriem.`);
+    return;
+  }
+
+  // 4. Formatēta izvade
   console.log(
     `\n=== Laikapstākļu vēsture: ${cityName || "Visas pilsētas"} ===`,
   );
+  if (filterDays) console.log(`(Pēdējās ${filterDays} dienas)`);
 
   const col = { date: 19, temp: 10, hum: 10, wind: 12 };
   const header =
@@ -38,15 +58,13 @@ function displayHistory(history, cityName = null) {
   console.log(header);
   console.log("-".repeat(header.length + 15));
 
-  // 3. Datu izvadīšana un akumulēšana statistikai
   let temps = [];
   let humidities = [];
 
   filtered.forEach((entry) => {
-    // Pievienojam vērtības masīviem statistikai
     temps.push(entry.temperature);
     humidities.push(entry.humidity);
-    // Formatējam datumu uz YYYY-MM-DD HH:mm
+
     const date = entry.fetchedAt.replace("T", " ").substring(0, 16);
     const row =
       `${date}`.padEnd(col.date) +
@@ -62,18 +80,15 @@ function displayHistory(history, cityName = null) {
     console.log(row);
   });
 
-  // 4. Statistikas aprēķini
+  // 5. Statistika
   const count = filtered.length;
   const avgTemp = (temps.reduce((a, b) => a + b, 0) / count).toFixed(1);
   const minTemp = Math.min(...temps).toFixed(1);
   const maxTemp = Math.max(...temps).toFixed(1);
-  const avgHum = (humidities.reduce((a, b) => a + b, 0) / count).toFixed(0);
 
-  // 5. Statistikas izvade
   console.log(`\n── Statistika (${count} ieraksti) ──`);
   console.log(`Vidējā temperatūra:   ${avgTemp} °C`);
-  console.log(`Min / Max:            ${minTemp} °C / ${maxTemp} °C`);
-  console.log(`Vidējais mitrums:     ${avgHum} %`);
+  console.log(`Min / Max:             ${minTemp} °C / ${maxTemp} °C`);
   console.log("─".repeat(30));
 }
 

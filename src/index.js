@@ -108,12 +108,20 @@ async function mainMenu() {
       case "1":
         await handleWeatherSearch(appData);
         break;
-      case "2":
-        const histCity = await ask(
-          "Ievadi pilsētu (vai Enter, lai rādītu visu): ",
+      case "2": {
+        // Izmanto figūriekavas, lai izolētu mainīgos switch blokā
+        const histCity = await ask("Ievadi pilsētu (Enter visām): ");
+        const daysStr = await ask(
+          "Par cik dienām rādīt? (Enter visai vēsturei): ",
         );
-        displayHistory(appData.weatherHistory, histCity || null);
+
+        // Konvertējam uz skaitli vai null
+        const daysParam = daysStr ? parseInt(daysStr) : null;
+
+        // Izsaucam funkciju ar 3 parametriem
+        displayHistory(appData.weatherHistory, histCity || null, daysParam);
         break;
+      }
       case "3":
         console.log("Uz redzēšanos!");
         running = false;
