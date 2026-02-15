@@ -86,10 +86,10 @@ function displayHistory(history, cityName = null, days = null) {
   const minTemp = Math.min(...temps).toFixed(1);
   const maxTemp = Math.max(...temps).toFixed(1);
 
-  console.log(`\n── Statistika (${count} ieraksti) ──`);
+  console.log(`\n───────── Statistika (${count} ieraksti) ─────────`);
   console.log(`Vidējā temperatūra:   ${avgTemp} °C`);
-  console.log(`Min / Max:             ${minTemp} °C / ${maxTemp} °C`);
-  console.log("─".repeat(30));
+  console.log(`Min / Max:            ${minTemp} °C / ${maxTemp} °C`);
+  console.log("─".repeat(43));
 }
 
 module.exports = { displayHistory };

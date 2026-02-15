@@ -73,7 +73,7 @@ async function handleWeatherSearch(appData) {
     // Sagatavojam ierakstu vēsturei (storage)
     appData.weatherHistory.push({
       locationId: selectedLoc.name, // Pagaidām izmantojam vārdu kā ID
-      fetchedAt: weatherData.current.time,
+      fetchedAt: new Date().toISOString(), // UTC standarts
       temperature: weatherData.current.temperature_2m,
       humidity: weatherData.current.relative_humidity_2m,
       windSpeed: weatherData.current.wind_speed_10m,
@@ -109,7 +109,7 @@ async function mainMenu() {
         await handleWeatherSearch(appData);
         break;
       case "2": {
-        // Izmanto figūriekavas, lai izolētu mainīgos switch blokā
+        // Izmantojam figūriekavas, lai izolētu mainīgos switch blokā
         const histCity = await ask("Ievadi pilsētu (Enter visām): ");
         const daysStr = await ask(
           "Par cik dienām rādīt? (Enter visai vēsturei): ",
