@@ -21,30 +21,36 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
     const matchedLocations = safeLocations.filter(
       (loc) => loc.name && loc.name.toLowerCase() === termLower,
     );
-    targetIds = matchedLocations.map((loc) => loc.id.toLowerCase());
+    // Droša ID pārveidošana: pārliecināmies, ka ID ir teksts pirms toLowerCase()
+    targetIds = matchedLocations.map((loc) => String(loc.id).toLowerCase());
     targetIds.push(termLower);
   }
 
   // 2. Filtrējam vēsturi
   let filtered = searchTerm
-    ? safeHistory.filter(
-        (h) => h.locationId && targetIds.includes(h.locationId.toLowerCase()),
-      )
+    ? safeHistory.filter((h) => {
+        // DROŠĪBAS PĀRBAUDE: Pārliecināmies, ka locationId eksistē, pirms saucam toLowerCase
+        if (!h.locationId) return false;
+        return targetIds.includes(String(h.locationId).toLowerCase());
+      })
     : [...safeHistory];
 
   // 3. Filtrējam pēc datuma
   if (days) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
-    filtered = filtered.filter((h) => new Date(h.fetchedAt) >= cutoffDate);
+    filtered = filtered.filter(
+      (h) => h.fetchedAt && new Date(h.fetchedAt) >= cutoffDate,
+    );
   }
 
   // 4. Kārtojam
   filtered.sort((a, b) => new Date(b.fetchedAt) - new Date(a.fetchedAt));
 
+  // Ja pēc filtrēšanas nekas nav atrasts
   if (filtered.length === 0) {
     console.log(
-      `\n⚠ Dati netika atrasti pilsētai "${searchTerm || "Visiem"}".`,
+      `\n⚠ Dati netika atrasti pilsētai "${searchTerm || "Visiem"}". Pārliecinieties, vai nosaukums ir pareizs.`,
     );
     return;
   }
@@ -53,6 +59,7 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
   console.log(
     `\n=== Laikapstākļu vēsture: ${searchTerm || "Visas pilsētas"} ===`,
   );
+
   const col = { date: 19, temp: 10, hum: 10, wind: 12 };
   const header =
     "Datums".padEnd(col.date) +
@@ -69,28 +76,37 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
 
   let temps = [];
   let humidities = [];
-  let winds = []; // Pievienojam vēja masīvu statistikai
+  let winds = [];
 
   filtered.forEach((entry) => {
-    temps.push(entry.temperature);
-    humidities.push(entry.humidity);
-    winds.push(entry.windSpeed); // Saglabājam vēju
+    // Pievienojam noklusējuma vērtības, ja dati ir nepilnīgi
+    const temp = entry.temperature ?? 0;
+    const hum = entry.humidity ?? 0;
+    const wind = entry.windSpeed ?? 0;
+    const desc = entry.description || "Nav apraksta";
 
-    const date = entry.fetchedAt.replace("T", " ").substring(0, 16);
+    temps.push(temp);
+    humidities.push(hum);
+    winds.push(wind);
+
+    const date = entry.fetchedAt
+      ? entry.fetchedAt.replace("T", " ").substring(0, 16)
+      : "Nezināms datums";
+
     console.log(
       `${date}`.padEnd(col.date) +
         "| " +
-        `${entry.temperature.toFixed(1)}°C`.padEnd(col.temp) +
+        `${temp.toFixed(1)}°C`.padEnd(col.temp) +
         "| " +
-        `${entry.humidity}%`.padEnd(col.hum) +
+        `${hum}%`.padEnd(col.hum) +
         "| " +
-        `${entry.windSpeed.toFixed(1)} km/h`.padEnd(col.wind) +
+        `${wind.toFixed(1)} km/h`.padEnd(col.wind) +
         "| " +
-        `${entry.description}`,
+        `${desc}`,
     );
   });
 
-  // 6. Statistika (Aprēķini izmantojot jau aizpildītos masīvus)
+  // 6. Statistika
   const count = filtered.length;
   const avgTemp = (temps.reduce((a, b) => a + b, 0) / count).toFixed(1);
   const minTemp = Math.min(...temps).toFixed(1);
@@ -98,10 +114,9 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
   const avgHum = (humidities.reduce((a, b) => a + b, 0) / count).toFixed(0);
   const avgWind = (winds.reduce((a, b) => a + b, 0) / count).toFixed(1);
 
-  // 7. Uzlabota un izlīdzināta izvade
+  // 7. Izvade
   console.log(`\n────────── Statistika (${count} ieraksti) ──────────`);
-
-  const labelWidth = 22; // Fiksēts platums, lai visi skaitļi būtu vienā līmenī
+  const labelWidth = 22;
 
   console.log(`${"🌡️ Vidējā temperatūra:".padEnd(labelWidth)} ${avgTemp} °C`);
   console.log(
@@ -109,7 +124,6 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
   );
   console.log(`${"💧 Vidējais mitrums:".padEnd(labelWidth)} ${avgHum} %`);
   console.log(`${"💨 Vidējais vējš:".padEnd(labelWidth)} ${avgWind} km/h`);
-
   console.log("──────────────────────────────────────────────────");
 }
 
