@@ -10,7 +10,6 @@ function displayWeather(city, country, data, desc) {
 
   // Formatējam datumu uz YYYY-MM-DD HH:mm
   const date = time.replace("T", " ").substring(0, 16);
-  // console.log("date", date);
 
   const width = 42; // Iekšējais platums
 

@@ -6,6 +6,12 @@
  * @param {number|null} days - Dienu skaits
  */
 function displayHistory(history, locations, searchTerm = null, days = null) {
+  // Pārbaude, lai neļautu apskatīt visu vēsturi uzreiz
+  if (!searchTerm) {
+    console.log("\n⚠ Lūdzu, norādiet konkrētu pilsētu, lai apskatītu vēsturi.");
+    return;
+  }
+
   const safeHistory = Array.isArray(history) ? history : [];
   const safeLocations = Array.isArray(locations) ? locations : [];
 
@@ -14,22 +20,28 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
     return;
   }
 
-  // 1. Atrodam atbilstošos ID pēc nosaukuma
+  // 1. Sagatavojam ID sarakstu filtrēšanai
   let targetIds = [];
   if (searchTerm) {
     const termLower = searchTerm.toLowerCase();
+
+    // Atrodam visas lokācijas, kas atbilst ievadītajam nosaukumam
     const matchedLocations = safeLocations.filter(
       (loc) => loc.name && loc.name.toLowerCase() === termLower,
     );
-    // Droša ID pārveidošana: pārliecināmies, ka ID ir teksts pirms toLowerCase()
+
+    // Savācam visus ID (pārvēršam par string drošai salīdzināšanai)
     targetIds = matchedLocations.map((loc) => String(loc.id).toLowerCase());
-    targetIds.push(termLower);
+
+    // Pievienojam arī pašu meklēšanas frāzi (ja vēsturē ID ir saglabāts kā nosaukums)
+    if (!targetIds.includes(termLower)) {
+      targetIds.push(termLower);
+    }
   }
 
-  // 2. Filtrējam vēsturi
+  // 2. Filtrējam vēsturi pēc pilsētas
   let filtered = searchTerm
     ? safeHistory.filter((h) => {
-        // DROŠĪBAS PĀRBAUDE: Pārliecināmies, ka locationId eksistē, pirms saucam toLowerCase
         if (!h.locationId) return false;
         return targetIds.includes(String(h.locationId).toLowerCase());
       })
@@ -44,13 +56,18 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
     );
   }
 
-  // 4. Kārtojam
-  filtered.sort((a, b) => new Date(b.fetchedAt) - new Date(a.fetchedAt));
+  // 4. Kārtojam pēc datuma (jaunākie ieraksti augšgalā / no lielākā uz mazāko)
+  filtered.sort((a, b) => {
+    // Izmantojam apiTime kārtošanai, ja tas ir pieejams, citādi fetchedAt
+    const dateA = new Date(a.apiTime || a.fetchedAt);
+    const dateB = new Date(b.apiTime || b.fetchedAt);
+    return dateB - dateA; // No lielākā (jaunākā) uz mazāko (vecāko)
+  });
 
   // Ja pēc filtrēšanas nekas nav atrasts
   if (filtered.length === 0) {
     console.log(
-      `\n⚠ Dati netika atrasti pilsētai "${searchTerm || "Visiem"}". Pārliecinieties, vai nosaukums ir pareizs.`,
+      `\n⚠ Dati netika atrasti pilsētai "${searchTerm || "Visām"}". Pārliecinieties, vai nosaukums ir pareizs.`,
     );
     return;
   }
@@ -79,7 +96,6 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
   let winds = [];
 
   filtered.forEach((entry) => {
-    // Pievienojam noklusējuma vērtības, ja dati ir nepilnīgi
     const temp = entry.temperature ?? 0;
     const hum = entry.humidity ?? 0;
     const wind = entry.windSpeed ?? 0;
@@ -89,8 +105,10 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
     humidities.push(hum);
     winds.push(wind);
 
-    const date = entry.fetchedAt
-      ? entry.fetchedAt.replace("T", " ").substring(0, 16)
+    // LABOJUMS: Prioritāte ir apiTime (pilsētas laiks), ja tāda nav - fetchedAt
+    const rawDate = entry.apiTime || entry.fetchedAt;
+    const date = rawDate
+      ? rawDate.replace("T", " ").substring(0, 16)
       : "Nezināms datums";
 
     console.log(
@@ -106,7 +124,7 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
     );
   });
 
-  // 6. Statistika
+  // 6. Statistikas aprēķins
   const count = filtered.length;
   const avgTemp = (temps.reduce((a, b) => a + b, 0) / count).toFixed(1);
   const minTemp = Math.min(...temps).toFixed(1);
@@ -114,7 +132,7 @@ function displayHistory(history, locations, searchTerm = null, days = null) {
   const avgHum = (humidities.reduce((a, b) => a + b, 0) / count).toFixed(0);
   const avgWind = (winds.reduce((a, b) => a + b, 0) / count).toFixed(1);
 
-  // 7. Izvade
+  // 7. Statistikas izvade
   console.log(`\n────────── Statistika (${count} ieraksti) ──────────`);
   const labelWidth = 22;
 

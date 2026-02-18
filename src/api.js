@@ -23,7 +23,8 @@ async function fetchWeather(latitude, longitude) {
       throw new Error(`API_ERROR:${response.status} ${response.statusText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return data;
   } catch (error) {
     clearTimeout(timeout);
 

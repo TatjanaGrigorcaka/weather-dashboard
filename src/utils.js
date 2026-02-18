@@ -36,11 +36,9 @@ function getWeatherDescription(code) {
  * @returns {Object|null} Atgriež izveidoto lokācijas objektu vai null, ja pilsēta jau eksistē.
  */
 function addLocation(appData, selectedFromApi) {
-  // Pārbaudām, vai pilsēta ar šādām koordinātām jau ir sarakstā
+  // 1. Pārbaudām dublikātus (izmantojot ID vai koordinātas drošībai)
   const isDuplicate = appData.locations.some(
-    (loc) =>
-      loc.latitude === selectedFromApi.latitude &&
-      loc.longitude === selectedFromApi.longitude,
+    (loc) => String(loc.id) === String(selectedFromApi.id),
   );
 
   if (isDuplicate) {
@@ -50,9 +48,9 @@ function addLocation(appData, selectedFromApi) {
     return null;
   }
 
-  // Ja nav dublikāts, veidojam jaunu objektu pēc prasītās struktūras
+  // 2. Izveidojam tīru objektu ar prasītajiem laukiem
   const newLocation = {
-    id: "loc_" + Date.now(),
+    id: selectedFromApi.id, // Saglabājam kā skaitli no API
     name: selectedFromApi.name,
     country: selectedFromApi.country,
     latitude: selectedFromApi.latitude,

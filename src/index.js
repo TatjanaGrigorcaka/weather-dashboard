@@ -26,6 +26,15 @@ function ask(question) {
 }
 
 /**
+ * Palīgfunkcija koordinātu noformēšanai lietotājam draudzīgā veidā
+ */
+function formatCoords(lat, lon) {
+  const latDir = lat >= 0 ? "N" : "S";
+  const lonDir = lon >= 0 ? "E" : "W";
+  return `(${Math.abs(lat).toFixed(2)}°${latDir}, ${Math.abs(lon).toFixed(2)}°${lonDir})`;
+}
+
+/**
  * Palīgfunkcija centralizētai kļūdu ziņojumu izvadei
  */
 async function handleError(error, appData) {
@@ -63,7 +72,10 @@ async function handleWeatherSearch(appData) {
     if (cityName === "" && appData.locations.length > 0) {
       console.log("\nSaglabātās vietas:");
       appData.locations.forEach((l, i) => {
-        console.log(`${i + 1}. ${l.name}, ${l.country}`);
+        // Papildināts ar koordinātām
+        console.log(
+          `${i + 1}. ${l.name}, ${l.country} ${formatCoords(l.latitude, l.longitude)}`,
+        );
       });
       const favChoice = await ask(`Izvēlies (1-${appData.locations.length}): `);
       selectedLoc = appData.locations[parseInt(favChoice) - 1];
@@ -78,11 +90,29 @@ async function handleWeatherSearch(appData) {
 
       console.log("\nAtrasti rezultāti:");
       results.forEach((loc, i) => {
-        console.log(`${i + 1}. ${loc.name}, ${loc.country}`);
+        // Papildināts ar koordinātām
+        console.log(
+          `${i + 1}. ${loc.name}, ${loc.country} ${formatCoords(loc.latitude, loc.longitude)}`,
+        );
       });
 
       const choice = await ask(`Izvēlies (1-${results.length}): `);
-      selectedLoc = results[parseInt(choice) - 1];
+      const picked = results[parseInt(choice) - 1];
+
+      if (picked) {
+        // Pārbaudām, vai pilsēta jau ir mūsu lokācijās
+        const existing = appData.locations.find(
+          (l) => String(l.id) === String(picked.id),
+        );
+
+        if (existing) {
+          selectedLoc = existing;
+        } else {
+          // Ja jauna vieta, izmantojam utils funkciju un saglabājam
+          selectedLoc = addLocation(appData, picked);
+          saveData(appData);
+        }
+      }
     }
     // 2. Ja vieta izvēlēta, iegūstam laikapstākļus un rādām rāmīti
     if (selectedLoc) {
@@ -105,8 +135,9 @@ async function handleWeatherSearch(appData) {
 
       // Saglabājam vēsturē
       appData.weatherHistory.push({
-        locationId: selectedLoc.id || selectedLoc.name,
-        fetchedAt: new Date().toISOString(),
+        locationId: selectedLoc.id, // Izmantojam skaitlisko ID
+        fetchedAt: new Date().toISOString(), // Ierakstu kārtošanai
+        apiTime: weatherData.current.time, // Laiks no API (pilsētas laika zona) vēstures laikapstākļu apskatīšanai
         temperature: weatherData.current.temperature_2m,
         humidity: weatherData.current.relative_humidity_2m,
         windSpeed: weatherData.current.wind_speed_10m,
@@ -134,7 +165,10 @@ async function handleLocationManagement(appData) {
       console.log("Saraksts ir tukšs.");
     } else {
       appData.locations.forEach((loc, index) => {
-        console.log(`${index + 1}. ${loc.name}, ${loc.country}`);
+        // Papildināts ar koordinātām
+        console.log(
+          `${index + 1}. ${loc.name}, ${loc.country} ${formatCoords(loc.latitude, loc.longitude)}`,
+        );
       });
     }
 
@@ -156,7 +190,10 @@ async function handleLocationManagement(appData) {
           console.log("Pārliecinies, ka nosaukums ir pareizs.");
         } else {
           results.forEach((r, i) =>
-            console.log(`${i + 1}. ${r.name}, ${r.country}`),
+            // Papildināts ar koordinātām pie jaunas pilsētas izvēles
+            console.log(
+              `${i + 1}. ${r.name}, ${r.country} ${formatCoords(r.latitude, r.longitude)}`,
+            ),
           );
           const idx = await ask("Kuru pievienot? ");
           const selected = results[parseInt(idx) - 1];
@@ -210,13 +247,45 @@ async function mainMenu() {
         await handleWeatherSearch(appData);
         break;
       case "2": {
-        const city = await ask("Pilsētas nosaukums (Enter visām): ");
+        let city = await ask(
+          "Ievadi pilsētas nosaukumu, lai redzētu vēsturi (vai Enter, lai izvēlētos no saraksta): ",
+        );
+
+        // Ja lietotājs nesniedz nosaukumu, piedāvājam izvēlēties no saglabātajām vietām
+        if (!city) {
+          if (appData.locations.length === 0) {
+            console.log(
+              "\n⚠ Nav saglabātu vietu. Lūdzu, vispirms meklē pilsētu.",
+            );
+            break;
+          }
+
+          console.log("\nIzvēlies pilsētu no saraksta:");
+          appData.locations.forEach((l, i) => {
+            console.log(`${i + 1}. ${l.name}, ${l.country}`);
+          });
+
+          const choice = await ask(
+            `Izvēlies (1-${appData.locations.length}): `,
+          );
+          const selected = appData.locations[parseInt(choice) - 1];
+
+          if (selected) {
+            city = selected.name;
+          } else {
+            console.log("⚠ Nepareiza izvēle.");
+            break;
+          }
+        }
+
         const daysStr = await ask("Dienu skaits (Enter visai vēsturei): ");
         const daysParam = daysStr ? parseInt(daysStr) : null;
+
+        // Izsaucam vēstures attēlošanu konkrētai pilsētai
         displayHistory(
           appData.weatherHistory,
           appData.locations,
-          city || null,
+          city, // Šeit 'city' tagad vienmēr būs definēts
           daysParam,
         );
         break;
