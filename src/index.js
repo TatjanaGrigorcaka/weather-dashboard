@@ -37,7 +37,7 @@ function formatCoords(lat, lon) {
 /**
  * Palīgfunkcija centralizētai kļūdu ziņojumu izvadei
  */
-async function handleError(error, appData) {
+async function handleError(error, appData, cityName) {
   if (error.message === "NO_INTERNET") {
     console.log("\n⚠ Neizdevās savienoties ar serveri.");
     console.log("Pārbaudi interneta savienojumu.");
@@ -45,7 +45,7 @@ async function handleError(error, appData) {
       "Vai vēlies apskatīt pēdējos kešotos datus? (j/n): ",
     );
     if (showCache.toLowerCase() === "j") {
-      displayHistory(appData.weatherHistory, appData.locations);
+      displayHistory(appData.weatherHistory, appData.locations, cityName);
     }
   } else if (error.message.startsWith("API_ERROR:")) {
     const status = error.message.split(":")[1];
@@ -149,7 +149,7 @@ async function handleWeatherSearch(appData) {
       console.log("✓ Dati saglabāti vēsturē.");
     }
   } catch (error) {
-    await handleError(error, appData);
+    await handleError(error, appData, cityName);
   }
 }
 
@@ -218,7 +218,7 @@ async function handleLocationManagement(appData) {
         managing = false;
       }
     } catch (error) {
-      await handleError(error, appData);
+      await handleError(error, appData, cityName);
     }
   }
 }
